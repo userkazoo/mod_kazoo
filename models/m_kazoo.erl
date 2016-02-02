@@ -109,11 +109,12 @@ m_find_value({kz_list_account_channels, [{account_id, AccountId}]}, _M, Context)
 m_find_value({kz_channel_info, [{uuid, UUId}, {account_id, AccountId}]}, _M, Context) ->
     kazoo_util:kz_channel_info(UUId, AccountId, Context);
 
-m_find_value({kz_get_account_channel, [{call_id, CallId}]}, _M, Context) ->
-    kazoo_util:kz_get_account_channel(CallId, Context);
-
 m_find_value(kz_list_account_callflows, _M, Context) ->
     kazoo_util:kz_list_account_callflows(Context);
+
+m_find_value({kz_list_account_callflows, [{filter, Filter}]}, _M, Context) ->
+    JObjs = kazoo_util:kz_list_account_callflows(Context),
+    lists:filter(fun(X) -> modkazoo_util2:if_substring_in_json(Filter, kazoo_util:kz_get_account_callflow(modkazoo_util:get_value(<<"id">>,X), Context)) end, JObjs);
 
 m_find_value({kz_get_account_callflow, [{callflow_id,CallflowId}]}, _M, Context) ->
     kazoo_util:kz_get_account_callflow(CallflowId, Context);
@@ -289,8 +290,17 @@ m_find_value({cf_get_module_info, [{module_name, ModuleName},{module_path,Module
 m_find_value(kz_list_account_conferences, _M, Context) ->
     kazoo_util:kz_list_account_conferences(Context);
 
+m_find_value(kz_list_account_c2calls, _M, Context) ->
+    kazoo_util:kz_list_account_c2calls(Context);
+
+m_find_value({kz_get_account_c2call, [{c2call_id, C2CallId}]}, _M, Context) ->
+    kazoo_util:kz_c2call('get', C2CallId, Context);
+
+m_find_value({kz_c2call_hyperlink, [{c2call_id, C2CallId}]}, _M, Context) ->
+    kazoo_util:kz_c2call_hyperlink(C2CallId, Context);
+
 m_find_value({kz_get_account_conference, [{conference_id, ConferenceId}]}, _M, Context) ->
-    kazoo_util:kz_conference('get',ConferenceId, Context);
+    kazoo_util:kz_conference('get', ConferenceId, Context);
 
 m_find_value({kz_get_featurecode_by_name, [{featurecode_name, FCName}]}, _M, Context) ->
     kazoo_util:kz_get_featurecode_by_name(FCName, Context);
@@ -314,6 +324,10 @@ m_find_value({get_registrations_by_accountid, [{account_id, AccountId}]}, _M, Co
 
 m_find_value(kz_list_account_trunks, _M, Context) ->
     kazoo_util:list_account_trunks(Context);
+
+m_find_value({is_realms_synced, [{account_id, AccountId}]}, _M, Context) ->
+    AccountRealm = kazoo_util:get_account_realm(AccountId, Context),
+    lists:foldl(fun(X, Sum) -> (AccountRealm == X) and Sum end, 'true', kazoo_util:list_trunks_realm(AccountId, Context));
 
 m_find_value({kz_get_account_trunk, [{trunk_id, TrunkId}]}, _M, Context) ->
     kazoo_util:kz_trunk('get', TrunkId, [], Context);
@@ -343,7 +357,7 @@ m_find_value(outbound_routing_strategy, _M, Context) ->
     AccountId = z_context:get_session(kazoo_account_id, Context),
     m_find_value({outbound_routing_strategy, [{account_id, AccountId}]}, _M, Context);
 
-m_find_value({outbound_routing_strategy, [{account_id, 'undefined'}]}, _M, Context) ->
+m_find_value({outbound_routing_strategy, [{account_id, 'undefined'}]}, _M, _Context) ->
     ['undefined', 'undefined'];
 m_find_value({outbound_routing_strategy, [{account_id, AccountId}]}, _M, Context) ->
     CF = kazoo_util:kz_callflow_by_number(<<"no_match">>, AccountId, Context),
@@ -365,6 +379,13 @@ m_find_value({kz_notification_info, [{notification_id, 'undefined'}]}, _M, _Cont
 m_find_value({kz_notification_info, [{notification_id, TemplateId}]}, _M, Context) ->
     kazoo_util:kz_notification_info(TemplateId, Context);
 
+m_find_value({kz_notification_template, [{notification_id, 'undefined'}, {context_type, _}]}, _M, _Context) ->
+    'undefined';
+m_find_value({kz_notification_template, [{notification_id, _}, {context_type, 'undefined'}]}, _M, _Context) ->
+    'undefined';
+m_find_value({kz_notification_template, [{notification_id, TemplateId}, {context_type, ContextType}]}, _M, Context) ->
+    kazoo_util:kz_notification_template(ContextType, TemplateId, Context);
+
 m_find_value(kz_list_account_lists, _M, Context) ->
     kazoo_util:kz_list_account_lists(Context);
 
@@ -377,7 +398,37 @@ m_find_value({kz_list_account_list_entries, [{list_id, ListId}]}, _M, Context) -
     kazoo_util:kz_list_account_list_entries(ListId, Context);
 
 m_find_value({kz_conference_details, [{conference_id, ConferenceId}]}, _M, Context) ->
-    kazoo_util:kz_conference_details(ConferenceId,Context);
+    kazoo_util:dedup_kz_conference_details(ConferenceId,Context);
+
+m_find_value(notifications_smtplog, _M, Context) ->
+    kazoo_util:notifications_smtplog(Context);
+
+m_find_value(rs_customer_update_subject, _M, Context) ->
+    Filename = "/tmp/" ++ z_convert:to_list(z_context:get_session(kazoo_account_id, Context)) ++ "_subject.tpl",
+    case file:read_file(Filename) of
+        {'ok', Data} -> Data;
+        _ -> m_config:get_value('mod_kazoo', 'sender_name', Context)
+    end;
+
+m_find_value(rs_customer_update_html, _M, Context) ->
+    Filename = "/tmp/" ++ z_convert:to_list(z_context:get_session(kazoo_account_id, Context)) ++ "_html.tpl",
+    case file:read_file(Filename) of
+        {'ok', Data} ->
+            Data;
+        _ ->
+            {Html, Context} = z_template:render_to_iolist("rs_customer_udate_html.tpl", [], Context),
+            Html
+    end;
+
+m_find_value(rs_customer_update_text, _M, Context) ->
+    Filename = "/tmp/" ++ z_convert:to_list(z_context:get_session(kazoo_account_id, Context)) ++ "_text.tpl",
+    case file:read_file(Filename) of
+        {'ok', Data} ->
+            Data;
+        _ ->
+            {Text, Context} = z_template:render_to_iolist("rs_customer_udate_text.tpl", [], Context),
+            Text
+    end;
 
 m_find_value(_V, _VV, _Context) ->
     lager:info("m_find_value _V: ~p", [_V]),

@@ -92,7 +92,8 @@ event({postback,{set_vm_message_folder,[{folder, Folder}, {vmbox_id,VMBoxId}, {m
 
 event({postback,{delete_vm_message,[{vmbox_id,VMBoxId}, {media_id,MediaId}]}, _, _}, Context) ->
     kazoo_util:set_vm_message_folder(<<"deleted">>, VMBoxId, MediaId, Context),
-    z_render:update("user_portal_voicemails", z_template:render("user_portal_voicemails.tpl", [{headline,?__("Voicemails", Context)}], Context), Context);
+    mod_signal:emit({user_portal_voicemails_tpl, []}, Context),
+    Context;
 
 event({submit,{forgottenpwd,[]},"forgottenpwd_form","forgottenpwd_form"}, Context) ->
     Username = z_convert:to_binary(z_context:get_q("forgotten_username",Context)),
@@ -288,10 +289,12 @@ event({postback,{rs_add_number,[{account_id,AccountId}]},_,_}, Context) ->
             _ = kazoo_util:rs_add_number(NumberToAdd, AccountId, Context),
             lager:info("Number add attempt: ~p",[NumberToAdd]),
             {ClientIP, _} = webmachine_request:peer(z_context:get_reqdata(Context)),
+            SenderName = kazoo_util:email_sender_name(Context),
             Vars = [{account_name, z_context:get_session('kazoo_account_name', Context)}
                    ,{login_name, z_context:get_session('kazoo_login_name', Context)}
                    ,{email_from, m_config:get_value('mod_kazoo', sales_email, Context)}
                    ,{clientip, ClientIP}
+                   ,{sender_name, SenderName}
                    ,{number, NumberToAdd}],
             spawn('z_email', 'send_render', [m_config:get_value('mod_kazoo', sales_email, Context), "_email_number_purchase.tpl", Vars, Context]),
             lager:info("Number add attempt AccountId: ~p",[ AccountId]),
@@ -302,10 +305,12 @@ event({postback,{rs_add_number,[{account_id,AccountId}]},_,_}, Context) ->
 event({postback,{allocate_number,[{number,Number}]},_,_}, Context) ->
     lager:info("Number purchase attempt: ~p",[Number]),
     {ClientIP, _} = webmachine_request:peer(z_context:get_reqdata(Context)),
+    SenderName = kazoo_util:email_sender_name(Context),
     Vars = [{account_name, z_context:get_session('kazoo_account_name', Context)}
            ,{login_name, z_context:get_session('kazoo_login_name', Context)}
            ,{email_from, m_config:get_value('mod_kazoo', sales_email, Context)}
            ,{clientip, ClientIP}
+           ,{sender_name, SenderName}
            ,{number, Number}],
     case kazoo_util:is_creditable(Context) of
         'true' ->
@@ -320,9 +325,11 @@ event({postback,{allocate_number,[{number,Number}]},_,_}, Context) ->
 event({postback,{deallocate_number,[{number,Number}]},_,_}, Context) ->
     lager:info("Number deallocation attempt: ~p",[Number]),
     {ClientIP, _} = webmachine_request:peer(z_context:get_reqdata(Context)),
+    SenderName = kazoo_util:email_sender_name(Context),
     Vars = [{account_name, z_context:get_session('kazoo_account_name', Context)}
            ,{login_name, z_context:get_session('kazoo_login_name', Context)}
            ,{email_from, m_config:get_value('mod_kazoo', sales_email, Context)}
+           ,{sender_name, SenderName}
            ,{clientip, ClientIP}
            ,{number, Number}],
     spawn('z_email', 'send_render', [m_config:get_value('mod_kazoo', sales_email, Context), "_email_deallocate_number.tpl", Vars, Context]),
@@ -339,11 +346,13 @@ event({postback,{deallocate_number,[{number,Number}]},_,_}, Context) ->
 
 event({postback,{deallocate_number,[{number,Number},{account_id, AccountId}]},_,_}, Context) ->
     lager:info("Number deallocation attempt: ~p",[Number]),
+    SenderName = kazoo_util:email_sender_name(Context),
     {ClientIP, _} = webmachine_request:peer(z_context:get_reqdata(Context)),
     Vars = [{account_name, z_context:get_session('kazoo_account_name', Context)}
            ,{login_name, z_context:get_session('kazoo_login_name', Context)}
            ,{email_from, m_config:get_value('mod_kazoo', sales_email, Context)}
            ,{clientip, ClientIP}
+           ,{sender_name, SenderName}
            ,{number, Number}],
     spawn('z_email', 'send_render', [m_config:get_value('mod_kazoo', sales_email, Context), "_email_deallocate_number.tpl", Vars, Context]),
     case kazoo_util:deallocate_number(Number, AccountId, Context) of
@@ -900,6 +909,16 @@ event({postback,toggle_featurecode_call_forward_update,_,_}, Context) ->
     mod_signal:emit({signal_featurecode_call_forward_update, []}, Context),
     Context;
 
+event({postback,set_featurecode_dynamic_cid,_,_}, Context) ->
+    _ = kazoo_util:set_featurecode_dynamic_cid(z_context:get_q("dynamic_cid_list_id",Context), Context),
+    mod_signal:emit({signal_featurecode_dynamic_cid, []}, Context),
+    z_render:dialog_close(Context);
+
+event({postback,delete_featurecode_dynamic_cid,_,_}, Context) ->
+    _ = kazoo_util:delete_featurecode_dynamic_cid(Context),
+    mod_signal:emit({signal_featurecode_dynamic_cid, []}, Context),
+    z_render:dialog_close(Context);
+
 event({postback,{toggle_blacklist_member,[{blacklist_id,BlacklistId}]},_,_}, Context) ->
     _ = kazoo_util:toggle_blacklist_member(BlacklistId,Context),
     mod_signal:emit({update_admin_portal_blacklists_tpl, []}, Context),
@@ -950,8 +969,9 @@ event({postback,rs_account_demask,_,_},Context) ->
     z_context:set_session(kazoo_account_id, ResellerId, Context),
     z_context:set_session('current_callflow','undefined',Context),
     z_context:set_session('account_realm','undefined',Context),
-    _ = modkazoo_auth:may_be_add_third_party_billing(Context),
+    modkazoo_auth:may_be_clean_third_party_billing(Context),
     _ = modkazoo_auth:may_be_set_user_data(Context),
+    _ = modkazoo_auth:may_be_add_third_party_billing(Context),
     z_render:wire({redirect, [{dispatch, "reseller_portal"}]}, Context);
 
 event({submit,{addcccpcidform, _}, _, _}, Context) ->
@@ -1005,6 +1025,11 @@ event({submit,manage_trunk_numbers,_,_}, Context) ->
 event({postback,{flush_registration_by_username,[{sip_username, Username}]},_,_}, Context) ->
     _ = kazoo_util:kz_flush_registration_by_username(Username, Context),
     mod_signal:emit({update_admin_portal_devices_list_tpl, []}, Context),
+    Context;
+
+event({postback,{flush_pbx_registration_by_username,[{sip_username, Username}]},_,_}, Context) ->
+    _ = kazoo_util:kz_flush_registration_by_username(Username, Context),
+    mod_signal:emit({update_admin_portal_trunk_list_tpl, []}, Context),
     Context;
 
 event({submit,kz_webhook,_,_},Context) ->
@@ -1095,12 +1120,163 @@ event({postback,{delete_list,[{list_id, ListId}]},_,_}, Context) ->
 
 event({submit,account_list_entries,_,_}, Context) ->
     ListId = z_context:get_q("list_id", Context),
-    _ = kazoo_util:kz_account_list_add_entry(ListId, Context),
-    z_render:update("list_entries_div", z_template:render("_list_entries_dialog.tpl", [{list_id, ListId}], Context), Context);
+    ListType = z_convert:to_binary(z_context:get_q("list_type", Context)),
+    TemplateName = z_context:get_q("template_name", Context),
+    _ = kazoo_util:kz_account_list_add_entry(ListType, ListId, Context),
+    z_render:update("list_entries_div", z_template:render(TemplateName, [{list_id, ListId}], Context), Context);
 
-event({postback,{delete_account_list_entry,[{list_id,ListId},{entry_id,EntryId}]},_,_}, Context) ->
+event({postback,{delete_account_list_entry,[{list_id,ListId},{entry_id,EntryId},{template_name, TemplateName}]},_,_}, Context) ->
     _ = kazoo_util:delete_account_list_entry(EntryId, ListId, Context),
-    z_render:update("list_entries_div", z_template:render("_list_entries_dialog.tpl", [{list_id, ListId}], Context), Context);
+    z_render:update("list_entries_div", z_template:render(TemplateName, [{list_id, ListId}], Context), Context);
+
+event({postback,conference_selected,_,_},Context) ->
+    z_render:update("child_sandbox", z_template:render("conference_info.tpl", [{conference_id, z_context:get_q("triggervalue", Context)}], Context), Context);
+
+event({submit,sendmail_test_notification,_,_}, Context) ->
+    Email = z_context:get_q("chosen_email", Context),
+    AccountId = z_context:get_session(kazoo_account_id, Context),
+    NotificationId = z_context:get_q("notification_id", Context),
+    _ = kazoo_util:sendmail_test_notification(Email, AccountId, NotificationId, Context),
+    mod_signal:emit({update_reseller_portal_notifications_tpl, []}, Context),
+    z_render:dialog_close(Context);
+
+event({submit,edit_notification_html,_,_}, Context) ->
+    AccountId = z_context:get_session(kazoo_account_id, Context),
+    NotificationId = z_context:get_q("notification_id", Context),
+    CurrNotifyDoc = kazoo_util:kz_notification_info(NotificationId, Context),
+    case modkazoo_util:get_value(<<"account_overridden">>, CurrNotifyDoc) of
+        'undefined' ->
+            Plain = kazoo_util:kz_notification_template("text/plain", NotificationId, AccountId, Context),
+            _ = kazoo_util:kz_save_notification_template("text/plain", NotificationId, AccountId, Plain, Context);
+        _ -> 'ok'
+    end,
+    MessageBody = z_context:get_q("html_body", Context),
+    _ = kazoo_util:kz_save_notification_template("text/html", NotificationId, AccountId, MessageBody, Context),
+    mod_signal:emit({update_reseller_portal_notifications_tpl, []}, Context),
+    z_render:dialog_close(Context);
+
+event({submit,edit_notification_text,_,_}, Context) ->
+    AccountId = z_context:get_session(kazoo_account_id, Context),
+    NotificationId = z_context:get_q("notification_id", Context),
+    CurrNotifyDoc = kazoo_util:kz_notification_info(NotificationId, Context),
+    case modkazoo_util:get_value(<<"account_overridden">>, CurrNotifyDoc) of
+        'undefined' ->
+            HTML = kazoo_util:kz_notification_template("text/html", NotificationId, AccountId, Context),
+            _ = kazoo_util:kz_save_notification_template("text/html", NotificationId, AccountId, HTML, Context);
+        _ -> 'ok'
+    end,
+    MessageBody = z_context:get_q("text_body", Context),
+    _ = kazoo_util:kz_save_notification_template("text/plain", NotificationId, AccountId, MessageBody, Context),
+    mod_signal:emit({update_reseller_portal_notifications_tpl, []}, Context),
+    z_render:dialog_close(Context);
+
+event({postback,{remove_notification_template,[{notification_id,NotificationId}]},_,_}, Context) ->
+    AccountId = z_context:get_session(kazoo_account_id, Context),
+    _ = kazoo_util:kz_delete_notification_template(NotificationId, AccountId, Context),
+    mod_signal:emit({update_reseller_portal_notifications_tpl, []}, Context),
+    Context;
+
+event({postback,{add_conf_participant,[{conference_id,ConferenceId}]},_,_}, Context) ->
+    kazoo_util:add_conf_participant(ConferenceId, Context);
+
+event({postback,{start_outbound_conference,[{conference_id,ConferenceId}]},_,_}, Context) ->
+    kazoo_util:start_outbound_conference(ConferenceId, Context);
+
+event({postback,{do_conference_action,[{conference_id,ConferenceId},{action, Action},{participant_id,ParticipantId}]},_,_}, Context) ->
+    _ = kazoo_util:do_conference_action(ParticipantId, Action, ConferenceId, Context),
+    mod_signal:emit({update_conference_participants_tpl, []}, Context),
+    Context;
+
+event({postback,{channel_hangup,[{channel_id,ChannelId}]},_,_}, Context) ->
+    AccountId = z_context:get_session(kazoo_account_id, Context),
+    _ = kazoo_util:kz_channel_hangup(ChannelId, AccountId, Context),
+    z_render:dialog_close(Context);
+
+event({postback,{channel_hangup_confirm,[{channel_id,ChannelId}]},_,_}, Context) ->
+    z_render:dialog(?__("Please confirm ",Context), "_confirm_channel_hangup.tpl", [{channel_id, ChannelId}], Context);
+
+event({postback,channel_hangup_confirm,_,_}, Context) ->
+    ChannelId = z_context:get_q("channel_id", Context),
+    z_render:dialog(?__("Please confirm ",Context), "_confirm_channel_hangup.tpl", [{channel_id, ChannelId}], Context);
+
+event({postback,{channel_eavesdrop_dialog,[{channel_id,ChannelId}]},_,_}, Context) ->
+    z_render:dialog(?__("Please choose device to eavesdrop with ",Context), "_channel_eavesdrop_dialog.tpl", [{channel_id, ChannelId}], Context);
+
+event({postback,channel_eavesdrop_dialog,_,_}, Context) ->
+    ChannelId = z_context:get_q("channel_id", Context),
+    z_render:dialog(?__("Please choose device to eavesdrop with ",Context), "_channel_eavesdrop_dialog.tpl", [{channel_id, ChannelId}], Context);
+
+event({postback,{channel_eavesdrop,[{channel_id,ChannelId}]},_,_}, Context) ->
+    AccountId = z_context:get_session(kazoo_account_id, Context),
+    Id = z_context:get_q("id", Context),
+    Mode = z_context:get_q("mode", Context),
+    _ = kazoo_util:kz_channel_eavesdrop(Id, Mode, ChannelId, AccountId, Context),
+    z_render:dialog_close(Context);
+
+event({postback,{channel_transfer_dialog,[{channel_id,ChannelId}]},_,_}, Context) ->
+    z_render:dialog(?__("Please select callflow to transfer chosen leg to ",Context), "_channel_transfer_dialog.tpl", [{channel_id, ChannelId}], Context);
+
+event({postback,channel_transfer_dialog,_,_}, Context) ->
+    ChannelId = z_context:get_q("channel_id", Context),
+    z_render:dialog(?__("Please select callflow to transfer chosen leg to ",Context), "_channel_transfer_dialog.tpl", [{channel_id, ChannelId}], Context);
+
+event({postback,{channel_transfer,[{channel_id,ChannelId}]},_,_}, Context) ->
+    AccountId = z_context:get_session(kazoo_account_id, Context),
+    Target = z_context:get_q("target", Context),
+    _ = kazoo_util:kz_channel_transfer(Target, ChannelId, AccountId, Context),
+    z_render:dialog_close(Context);
+
+event({postback,{sync_trunkstore_realms,[{account_id, AccountId}]},_,_}, Context) ->
+    _ = kazoo_util:sync_trunkstore_realms(AccountId, Context),
+    z_render:update("child_sandbox", z_template:render("reseller_child_info.tpl", [{account_id, AccountId}], Context), Context);
+
+event({postback,{ts_trunk_disable,[{trunk_id,TrunkId},{server_index,Index}]},_,_}, Context) ->
+    _ = kazoo_util:ts_trunk_disable(Index, TrunkId, Context),
+    mod_signal:emit({update_admin_portal_trunk_list_tpl, []}, Context);
+
+event({postback,{ts_trunk_enable,[{trunk_id,TrunkId},{server_index,Index}]},_,_}, Context) ->
+    _ = kazoo_util:ts_trunk_enable(Index, TrunkId, Context),
+    mod_signal:emit({update_admin_portal_trunk_list_tpl, []}, Context);
+
+event({submit,kz_c2call,_,_},Context) ->
+    _ = kazoo_util:kz_c2call(Context),
+    mod_signal:emit({update_admin_portal_c2call_list_tpl, []}, Context),
+    z_render:dialog_close(Context);
+
+event({postback,{delete_c2call,[{c2call_id, C2CallId}]},_,_}, Context) ->
+    _ = kazoo_util:kz_c2call('delete',C2CallId,Context),
+    mod_signal:emit({update_admin_portal_c2call_list_tpl, []}, Context),
+    Context;
+
+event({submit,kz_purge_voicemails,_,_}, Context) ->
+    Count = kazoo_util:kz_purge_voicemails(z_convert:to_binary(z_context:get_q("vmbox_id", Context)), z_convert:to_binary(z_context:get_q("days_to", Context)), Context),
+    case Count > 2 of
+        'true' ->
+            spawn(fun() -> timer:sleep(Count * ?MILLISECONDS_IN_SECOND), mod_signal:emit({user_portal_voicemails_tpl, []}, Context) end),
+            Context1 = z_render:growl(?__("Messages removal started", Context), Context);
+        'false' ->
+            Context1 = z_render:growl(?__("No messages to remove", Context), Context)
+    end,
+    z_render:dialog_close(Context1);
+
+event({submit,kz_notifications,_,_}, Context) ->
+    _ = kazoo_util:kz_notifications(Context),
+    mod_signal:emit({update_reseller_portal_notifications_tpl, []}, Context),
+    z_render:dialog_close(Context);
+
+event({postback,{enable_notification,[{notification_id,NotificationId}]},_,_}, Context) ->
+    _ = kazoo_util:kz_notification_toggle('true', NotificationId, Context),
+    mod_signal:emit({update_reseller_portal_notifications_tpl, []}, Context),
+    Context;
+
+event({postback,{disable_notification,[{notification_id,NotificationId}]},_,_}, Context) ->
+    _ = kazoo_util:kz_notification_toggle('false', NotificationId, Context),
+    mod_signal:emit({update_reseller_portal_notifications_tpl, []}, Context),
+    Context;
+
+event({submit,rs_send_message,_,_}, Context) ->
+    _ = modkazoo_notify:rs_send_customer_update(Context),
+    z_render:dialog_close(Context);
 
 event({drag,_,_},Context) ->
     Context;

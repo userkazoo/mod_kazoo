@@ -4,8 +4,206 @@ msgstr ""
 msgid ""
 msgstr ""
 
-msgid ""
-msgstr ""
+msgid "Send message"
+msgstr "Отправить сообщение"
+
+msgid "send message"
+msgstr "отправить сообщение"
+
+msgid "Edit dynamic CID settings"
+msgstr "Изменить настройки опции Выбор АОН"
+
+msgid "Switch off dynamic CID feature"
+msgstr "Отключить опцию выбора АОН"
+
+msgid "Add list"
+msgstr "Добавить список"
+
+msgid "Enter description name here"
+msgstr "Введите описание списка"
+
+msgid "Enter list name here"
+msgstr "Введите название списка"
+
+msgid "Save list"
+msgstr "Сохранить список"
+
+msgid "Dynamic CID"
+msgstr "Выбор АОНа"
+
+msgid "BCC"
+msgstr "Скрытая копия"
+
+msgid "CC"
+msgstr "Копия"
+
+msgid "Save Click-to-Call"
+msgstr "Созранить правило"
+
+msgid "Add Click-to-Call"
+msgstr "Добавить правило заказа обратного звонка"
+
+msgid "Enter number to call here"
+msgstr "Введите номер телефона"
+
+msgid "Place test call"
+msgstr "Совершить тестовый вызов"
+
+msgid "Show code"
+msgstr "Показать пример кода"
+
+msgid "Hide code"
+msgstr "Скрыть пример кода"
+
+msgid "Test"
+msgstr "Тест"
+
+msgid "1 day"
+msgstr "1 день"
+
+msgid "3 days"
+msgstr "3 дня"
+
+msgid "7 days"
+msgstr "7 дней"
+
+msgid "15 days"
+msgstr "15 дней"
+
+msgid "Delete all messages"
+msgstr "Удалить все сообщения"
+
+msgid "Older than"
+msgstr "Старше чем"
+
+msgid "Choose VMBox"
+msgstr "Выберите ящик"
+
+msgid "Clean up Voicemail Boxes"
+msgstr "Очистка ящиков голосовой почты"
+
+msgid "Purge messages"
+msgstr "Удалить сообщения"
+
+msgid "Test"
+msgstr "Тест"
+
+msgid "1 day"
+msgstr "1 день"
+
+msgid "3 days"
+msgstr "3 дня"
+
+msgid "7 days"
+msgstr "7 дней"
+
+msgid "15 days"
+msgstr "15 дней"
+
+msgid "Delete all messages"
+msgstr "Удалить все сообщения"
+
+msgid "Older than"
+msgstr "Старше чем"
+
+msgid "Choose VMBox"
+msgstr "Выберите ящик"
+
+msgid "Clean up Voicemail Boxes"
+msgstr "Очистка ящиков голосовой почты"
+
+msgid "Purge messages"
+msgstr "Удалить сообщения"
+
+msgid "purge messages"
+msgstr "удалить сообщения"
+
+msgid "Rule name"
+msgstr "Название правила"
+
+msgid "Request example"
+msgstr "Пример запроса"
+
+msgid "Click-to-Call"
+msgstr "Заказ обратного звонока"
+
+msgid "Auth required"
+msgstr "Авторизация"
+
+msgid "Dial first"
+msgstr "Первый"
+
+msgid "Conference manager"
+msgstr "Менеджер конференций"
+
+msgid "Microphone"
+msgstr "Микрофон"
+
+msgid "Select Callflow"
+msgstr "Выбрать маршрут"
+
+msgid "System default"
+msgstr "Стандартный"
+
+msgid "Changed"
+msgstr "Изменен"
+
+msgid "Overridden"
+msgstr "Изменен"
+
+msgid "Number purchase attempt"
+msgstr "Попытка подключить номер"
+
+msgid "tries to purchase phone number"
+msgstr "пытается подключить номер"
+
+msgid "An account"
+msgstr "Учетная запись"
+
+msgid "deallocated phone number"
+msgstr "отключила номер"
+
+msgid "Number dealocated"
+msgstr "Отключение номера"
+
+msgid "Howdy, platform administrators"
+msgstr "Здрасте, платформенные администраторы"
+
+msgid "Reseller's name"
+msgstr "Название реселлера"
+
+msgid "Do you really want to add participant"
+msgstr "Вы действительно хотите добавить участника в конференцию"
+
+msgid "add participant"
+msgstr "добавить участника"
+
+msgid "Kick off"
+msgstr "Отключить"
+
+msgid "Mute/Unmute"
+msgstr "Микрофон"
+
+msgid "Participant"
+msgstr "Участник"
+
+msgid "Current participants"
+msgstr "Текущие участники"
+
+msgid "Participants list"
+msgstr "Список участников"
+
+msgid "Play message"
+msgstr "Проиграть сообщение"
+
+msgid "Start"
+msgstr "Запуск"
+
+msgid "Allocated to"
+msgstr "Владелец"
+
+msgid "Allocated numbers"
+msgstr "Присвоенные номера"
 
 msgid "Edit entries"
 msgstr "Редактировать записи"
@@ -29,7 +227,7 @@ msgid "add webhook"
 msgstr "добавить уведомление"
 
 msgid "Webhooks"
-msgstr "Уведомления"
+msgstr "Уведомления (webhooks)"
 
 msgid "Browse"
 msgstr "Выбрать"
@@ -61,6 +259,9 @@ msgstr "Введите название шлюза"
 msgid "Enter resource name here"
 msgstr "Введите название маршрута"
 
+msgid "Enter Click-to-Call name here"
+msgstr "Введите название правила"
+
 msgid "Progress timeout"
 msgstr "Progress таймаут"
 
@@ -75,6 +276,9 @@ msgstr "Введите суффикс"
 
 msgid "Enter prefix here"
 msgstr "Введите префикс"
+
+msgid "Reseller settings"
+msgstr "Настройки реселлера"
 
 msgid "Reseller Settings"
 msgstr "Настройки реселлера"
@@ -284,7 +488,7 @@ msgid "Pattern"
 msgstr "Шаблон"
 
 msgid "Extension"
-msgstr "Внутренний номер"
+msgstr "Номер"
 
 msgid "Spare numbers"
 msgstr "Свободные номера"
@@ -372,6 +576,9 @@ msgstr "обновить"
 
 msgid "back to send fax form"
 msgstr "вернуться к отправке"
+
+msgid "sent notifications"
+msgstr "отправленные уведомления"
 
 msgid "show sent faxes"
 msgstr "показать отправленные"
@@ -622,6 +829,9 @@ msgstr "АОН"
 msgid "CID"
 msgstr "АОН"
 
+msgid "Choose a device to register then make calls from right here in your web browser"
+msgstr "Пожалуйста выберите устройство для регистрации, после чего Вы сможете позвонить из браузера"
+
 msgid "Please choose sip device to register with"
 msgstr "Пожалуйста выберите устройство для регистрации"
 
@@ -675,9 +885,6 @@ msgstr "Вы можете получить доступ на портал по �
 
 msgid "We're pleased to confirm that your account has been created"
 msgstr "Мы рады сообщить, что Ваша учетная запись создана"
-
-msgid "OnNet communications Inc."
-msgstr "ЗАО «ОнНет комьюникейшнс»"
 
 msgid "Welcome to"
 msgstr "Добро пожаловать в"
@@ -957,6 +1164,9 @@ msgstr "Настройки учетной записи"
 
 msgid "Add conference"
 msgstr "Добавить конференцию"
+
+msgid "add click-to-call"
+msgstr "добавить click-to-call"
 
 msgid "add conference"
 msgstr "добавить конференцию"

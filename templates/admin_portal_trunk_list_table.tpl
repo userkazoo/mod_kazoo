@@ -8,11 +8,13 @@
             <th style="text-align: center;">{_ Active _}</th>
             <th style="text-align: center;"></th>
             <th style="text-align: center;"></th>
+            <th style="text-align: center;"></th>
         </tr>
     </thead>
     <tbody>
-        {% for trunk in m.kazoo.kz_list_account_trunks %}
-        {% for server_details in m.kazoo[{kz_get_account_trunk trunk_id=trunk}][1]["servers"] %}
+        {% for trunk_id in m.kazoo.kz_list_account_trunks %}
+        {% with m.kazoo[{kz_get_account_trunk trunk_id=trunk_id}] as trunk_doc %}
+        {% for server_details in trunk_doc[1]["servers"] %}
         {% with m.kazoo[{kz_registration_details_by_username username=server_details["auth"][1]["auth_user"]}] as reg_details %}
 	<tr>
             <td style="text-align: center1;">{{ server_details["server_name"] }}</td>
@@ -20,30 +22,48 @@
             <td style="text-align: center;">
               {% if reg_details %}
                 {% wire id="info_"++forloop.counter action={ dialog_open title=_"Registration details" template="_details.tpl" arg=reg_details } %}
-                <i id="info_{{ forloop.counter }}" class="fa fa-info-circle zprimary pointer" title="Enabled">
+                <i id="info_{{ forloop.counter }}" class="fa fa-info-circle zprimary pointer" title="Enabled"></i>
               {% else %}
-                <i class="fa fa-remove zalarm" title="Disabled">
+                <i class="fa fa-remove zalarm" title="Disabled"></i>
               {% endif %}
             </td>
             <td style="text-align: center;">
               {% if server_details["options"][1]["enabled"] %}
-                <i class="fa fa-check zprimary" title="Enabled">
+                <i id="ts_servers_options_enabled" class="fa fa-check zprimary pointer" title="Enabled"></i>
+                {% wire id="ts_servers_options_enabled" action={confirm text=_"Do you really want to disable this trunk"++"?"
+                                                                        action={postback postback={ts_trunk_disable trunk_id=trunk_id server_index=forloop.counter} delegate="mod_kazoo"}
+                                                               }
+                %}
               {% else %}
-                <i class="fa fa-remove zalarm" title="Disabled">
+                <i id="ts_servers_options_disabled" class="fa fa-remove zalarm pointer" title="Disabled"></i>
+                {% wire id="ts_servers_options_disabled" action={confirm text=_"Do you really want to enable this trunk"++"?"
+                                                                        action={postback postback={ts_trunk_enable trunk_id=trunk_id server_index=forloop.counter} delegate="mod_kazoo"}
+                                                                }
+                %}
               {% endif %}
             </td>
             <td style="text-align: center;"><i id="edit_{{ forloop.counter }}" class="fa fa-edit pointer" title="{_ Edit _}"></i></td>
             {% wire id="edit_"++forloop.counter action={ dialog_open title=_"Edit trunk"++" "++server_details["server_name"] template="_edit_trunk_lazy.tpl"
-                                                                     trunk_id=trunk server_index=forloop.counter width="auto"} %}
+                                                                     trunk_id=trunk_id server_index=forloop.counter width="auto"} %}
+            <td style="text-align: center;">
+              {% if reg_details %}
+                    <i id="flush_{{ forloop.counter }}" class="fa fa-eraser zprimary pointer" title="{_ Flush registration _}"></i>
+                    {% wire id="flush_"++forloop.counter action={confirm text=_"Do you really want to flush registration for trunk"++" "++server_details["server_name"]++"?"
+                                                                  action={postback postback={flush_pbx_registration_by_username sip_username=server_details["auth"][1]["auth_user"]} delegate="mod_kazoo"}
+                                                              }
+                    %}
+              {% endif %}
+            </td>
             <td style="text-align: center;"><i id="delete_{{ forloop.counter }}" class="fa fa-trash-o pointer" title="{_ Delete _}"></i></td>
             {% wire id="delete_"++forloop.counter
                     action={confirm text=_"Do you really want to delete trunk "++server_details["server_name"]++"?"
-                                action={postback postback={delete_trunk trunk_id=trunk server_index=forloop.counter} delegate="mod_kazoo"}
+                                action={postback postback={delete_trunk trunk_id=trunk_id server_index=forloop.counter} delegate="mod_kazoo"}
                            }
             %}
         </tr>
         {% endwith %}
         {% endfor %}
+        {% endwith %}
         {% endfor %}
     </tbody>
 </table>
